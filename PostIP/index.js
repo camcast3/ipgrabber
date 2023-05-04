@@ -9,7 +9,7 @@ module.exports = async function (context, req) {
         
         const { MongClient } = require("mongodb");
 
-        const callerip = req.get('X-Forwarded-For');
+        let callerip = req.get('X-Forwarded-For');
         
         if (!callerip) {
             context.res = {
@@ -23,7 +23,8 @@ module.exports = async function (context, req) {
             return
         } 
         
-        const iprange = callerip + '/32';
+        let ipv4 = callerip.split(":");
+        const iprange = ipv4[0] + '/32';
         const name = (req.query.name || (req.body && req.body.name));
 
         if (!name){
@@ -38,11 +39,18 @@ module.exports = async function (context, req) {
             return
         } 
 
-        await collection.insertOne(
-            { 
-                "name": name, 
-                "iprange": iprange
-            }
+        await collection.updateOne(
+            {
+                "iprange": iprange,
+            },
+            {
+                $setOnInsert: 
+                {
+                    "name": name, 
+                    "iprange": iprange
+                }
+            },
+            {upsert: true}
         );
 
         context.res = {
